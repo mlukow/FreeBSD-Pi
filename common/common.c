@@ -3,8 +3,13 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
+#include <unistd.h>
 
-#include "common_dht_read.h"
+#include "common.h"
+
+void busy_wait_microseconds(uint32_t micros) {
+	usleep(micros);
+}
 
 void busy_wait_milliseconds(uint32_t millis) {
   // Set delay time period.

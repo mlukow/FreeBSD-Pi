@@ -8,10 +8,10 @@ CPPFLAGS = -D_TS_ERRNO -D_POSIX_PTHREAD_SEMANTIX -D_LARGEFILE64_SOURCE \
 
 LDFLAGS = -lgpio
 
-all: dht11
+all: hcsr04
 
-dht11:
+hcsr04:
 	$(CC) -o $@ *.c ../common/*.c -I../common $(CFLAGS) $(CPPFLAGS) $(LDFLAGS)
 
 clean:
-	rm -rf dht11 *.o
+	rm -rf hcsr04 *.o
