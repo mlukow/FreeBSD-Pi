@@ -17,123 +17,123 @@
 #define DHT_PULSES 41
 
 int dht11_read(int type, int pin, float* humidity, float* temperature) {
-  // Validate humidity and temperature arguments and set them to zero.
-  if (humidity == NULL || temperature == NULL) {
-    return EXIT_FAILURE;
-  }
+	// Validate humidity and temperature arguments and set them to zero.
+	if (humidity == NULL || temperature == NULL) {
+		return EXIT_FAILURE;
+	}
 
-  *temperature = 0.0f;
-  *humidity = 0.0f;
+	*temperature = 0.0f;
+	*humidity = 0.0f;
 
-  // Initialize GPIO library.
+	// Initialize GPIO library.
 	gpio_handle_t handle = gpio_open(0);
-  if (handle == GPIO_INVALID_HANDLE) {
-    return EXIT_FAILURE;
-  }
+	if (handle == GPIO_INVALID_HANDLE) {
+		return EXIT_FAILURE;
+	}
 
-  // Store the count that each DHT bit pulse is low and high.
-  // Make sure array is initialized to start at zero.
-  int pulseCounts[DHT_PULSES * 2] = {0};
+	// Store the count that each DHT bit pulse is low and high.
+	// Make sure array is initialized to start at zero.
+	int pulseCounts[DHT_PULSES * 2] = {0};
 
-  // Set pin to output.
+	// Set pin to output.
 	gpio_pin_output(handle, pin);
 
-  // Bump up process priority and change scheduler to try to make process more
+	// Bump up process priority and change scheduler to try to make process more
 	// 'real time'.
-  set_max_priority();
+	set_max_priority();
 
-  // Set pin high for ~500 milliseconds.
+	// Set pin high for ~500 milliseconds.
 	gpio_pin_high(handle, pin);
-  sleep_milliseconds(500);
+	sleep_milliseconds(500);
 
-  // The next calls are timing critical and care should be taken
-  // to ensure no unnecssary work is done below.
+	// The next calls are timing critical and care should be taken
+	// to ensure no unnecssary work is done below.
 
-  // Set pin low for ~20 milliseconds.
+	// Set pin low for ~20 milliseconds.
 	gpio_pin_low(handle, pin);
-  busy_wait_milliseconds(20);
+	busy_wait_milliseconds(20);
 
-  // Set pin at input.
+	// Set pin at input.
 	gpio_pin_input(handle, pin);
-  // Need a very short delay before reading pins or else value is sometimes
+	// Need a very short delay before reading pins or else value is sometimes
 	// still low.
-  for (volatile int i = 0; i < 500; ++i) {
+	for (volatile int i = 0; i < 500; ++i) {
 		// do nothing
-  }
+	}
 
-  // Wait for DHT to pull pin low.
-  uint32_t count = 0;
+	// Wait for DHT to pull pin low.
+	uint32_t count = 0;
 	while (gpio_pin_get(handle, pin)) {
-    if (++count >= DHT_MAXCOUNT) {
-      // Timeout waiting for response.
-      set_default_priority();
+		if (++count >= DHT_MAXCOUNT) {
+			// Timeout waiting for response.
+			set_default_priority();
 			gpio_close(handle);
-      return EXIT_FAILURE;
-    }
-  }
+			return EXIT_FAILURE;
+		}
+	}
 
-  // Record pulse widths for the expected result bits.
-  for (int i = 0; i < DHT_PULSES * 2; i += 2) {
-    // Count how long pin is low and store in pulseCounts[i]
+	// Record pulse widths for the expected result bits.
+	for (int i = 0; i < DHT_PULSES * 2; i += 2) {
+		// Count how long pin is low and store in pulseCounts[i]
 		while (!gpio_pin_get(handle, pin)) {
-      if (++pulseCounts[i] >= DHT_MAXCOUNT) {
-        // Timeout waiting for response.
-        set_default_priority();
+			if (++pulseCounts[i] >= DHT_MAXCOUNT) {
+				// Timeout waiting for response.
+				set_default_priority();
 				gpio_close(handle);
-        return EXIT_FAILURE;
-      }
-    }
+				return EXIT_FAILURE;
+			}
+		}
 
-    // Count how long pin is high and store in pulseCounts[i+1]
-    while (gpio_pin_get(handle, pin)) {
-      if (++pulseCounts[i+1] >= DHT_MAXCOUNT) {
-        // Timeout waiting for response.
-        set_default_priority();
+		// Count how long pin is high and store in pulseCounts[i+1]
+		while (gpio_pin_get(handle, pin)) {
+			if (++pulseCounts[i+1] >= DHT_MAXCOUNT) {
+				// Timeout waiting for response.
+				set_default_priority();
 				gpio_close(handle);
-        return EXIT_FAILURE;
-      }
-    }
-  }
+				return EXIT_FAILURE;
+			}
+		}
+	}
 
-  // Done with timing critical code, now interpret the results.
+	// Done with timing critical code, now interpret the results.
 
-  // Drop back to normal priority.
-  set_default_priority();
+	// Drop back to normal priority.
+	set_default_priority();
 
 	// Close the GPIO handle.
 	gpio_close(handle);
 
-  // Compute the average low pulse width to use as a 50 microsecond reference
+	// Compute the average low pulse width to use as a 50 microsecond reference
 	// threshold. Ignore the first two readings because they are a constant 80
 	// microsecond pulse.
-  uint32_t threshold = 0;
-  for (int i = 2; i < DHT_PULSES * 2; i += 2) {
-    threshold += pulseCounts[i];
-  }
+	uint32_t threshold = 0;
+	for (int i = 2; i < DHT_PULSES * 2; i += 2) {
+		threshold += pulseCounts[i];
+	}
 
-  threshold /= DHT_PULSES-1;
+	threshold /= DHT_PULSES-1;
 
-  // Interpret each high pulse as a 0 or 1 by comparing it to the 50us
+	// Interpret each high pulse as a 0 or 1 by comparing it to the 50us
 	// reference. If the count is less than 50us it must be a ~28us 0 pulse, and
 	// if it's higher then it must be a ~70us 1 pulse.
-  uint8_t data[5] = {0};
-  for (int i = 3; i < DHT_PULSES * 2; i += 2) {
-    int index = (i - 3) / 16;
-    data[index] <<= 1;
-    if (pulseCounts[i] >= threshold) {
-      // One bit for long pulse.
-      data[index] |= 1;
-    }
-    // Else zero bit for short pulse.
-  }
+	uint8_t data[5] = {0};
+	for (int i = 3; i < DHT_PULSES * 2; i += 2) {
+		int index = (i - 3) / 16;
+		data[index] <<= 1;
+		if (pulseCounts[i] >= threshold) {
+			// One bit for long pulse.
+			data[index] |= 1;
+		}
+		// Else zero bit for short pulse.
+	}
 
-  // Verify checksum of received data.
-  if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) {
-  // Get humidity and temp for DHT11 sensor.
+	// Verify checksum of received data.
+	if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) {
+		// Get humidity and temp for DHT11 sensor.
 		*humidity = (float)data[0];
 		*temperature = (float)data[2];
 		return EXIT_SUCCESS;
 	}
 
-  return EXIT_FAILURE;
+	return EXIT_FAILURE;
 }
