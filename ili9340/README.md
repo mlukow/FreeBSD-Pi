@@ -5,7 +5,7 @@
 
 A program demonstrating how to display data on a PiTFT display. It is assumed that the display is connected to SPI0 of the Raspberry Pi.
 
-You can find the datasheet for ILI9340 [here](https://cdn-shop.adafruit.com/datasheets/ILI9340.pdf).
+You can find the datasheet for ILI9340 [here](https://cdn-shop.adafruit.com/datasheets/ILI9340.pdf). The board used in this example is [Adafruit PiTFT 2.2" HAT Mini Kit](https://www.adafruit.com/product/2315).
 
 # Usage
 
